@@ -1,0 +1,52 @@
+plugins {
+    id 'org.hidetake.swagger.generator' version '2.9.0'
+    id 'maven'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    // Add dependency for Swagger Codegen CLI
+    swaggerCodegen 'io.swagger:swagger-codegen-cli:'+project.swaggerCodegenVersion
+}
+
+swaggerSources {
+    generatedProject {
+        inputFile = file(project.inputFile)
+        code {
+            language = project.clientLanguage
+            configFile = file(project.configFile)
+        }
+    }
+}
+
+if(project.hasProperty('clientLanguage') && project.clientLanguage == 'java') {
+
+    task buildGeneratedJavaProject(type: GradleBuild, dependsOn: generateSwaggerCodeGeneratedProject) {
+        buildFile = project.generatedProjectBuildPath + '/build.gradle'
+        tasks = project.generatedProjectTasks.split(",")
+    }
+    uploadArchives.dependsOn buildGeneratedJavaProject
+
+    def subProjectJarFile = file(project.generatedProjectBuildPath+'build/libs'+project.generatedProjectArtifactId)
+    artifacts {
+        archives subProjectJarFile
+    }
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            snapshotRepository(url: "http://repository.activeeon.com/content/repositories/snapshots/") {
+                authentication(userName: "${System.getProperty('nexusUsername')}",
+                        password: "${System.getProperty('nexusPassword')}")
+            }
+            repository(url: "http://repository.activeeon.com/content/repositories/releases/") {
+                authentication(userName: "${System.getProperty('nexusUsername')}",
+                        password: "${System.getProperty('nexusPassword')}")
+            }
+        }
+    }
+}
